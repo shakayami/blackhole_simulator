@@ -85,3 +85,9 @@ resources/                # Qt リソースファイル
 - Qt 6（Core, Widgets, OpenGL, OpenGLWidgets）
 - CMake / CMakePresets / vcpkg
 - glm, stb（vcpkg 経由）
+
+## ライセンス
+
+本リポジトリのソースコードは [MIT License](LICENSE) の下で公開しています。
+
+Qt は LGPL/商用ライセンスで別途配布されており、本リポジトリには含まれていません（vcpkg / 各自の Qt インストールを利用）。バイナリを配布する場合は Qt 側のライセンス条件（LGPL の動的リンク要件など）を別途確認してください。背景テクスチャ（NASA Deep Star Maps）もリポジトリには含めていません（[assets/textures/README.md](assets/textures/README.md) 参照）。

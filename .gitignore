@@ -1,0 +1,78 @@
+# ── Build output ──────────────────────────────────────────────
+build/
+build_debug/
+out/
+bin/
+*.exe
+*.dll
+*.lib
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.tlog
+
+# ── Build logs (ローカル絶対パス＝ユーザー名を含むため必ず除外) ─
+build_out.txt
+build_err.txt
+*.log
+
+# ── CMake generated ───────────────────────────────────────────
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+
+# ── Qt generated ──────────────────────────────────────────────
+*_autogen/
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+.qt/
+
+# ── vcpkg ─────────────────────────────────────────────────────
+vcpkg_installed/
+vcpkg-manifest-install.log
+
+# ── 背景テクスチャ資産 (NASA由来・巨大サイズ＋再配布ライセンス未確認のため除外) ─
+# 取得元・扱いは assets/textures/README.md を参照
+assets/textures/*
+!assets/textures/README.md
+
+# ── Render output (アプリの PNG 保存機能の出力) ───────────────
+renders/
+output/
+frame_*.png
+*_render.png
+
+# ── Python (デバッグ用スクリプト) ─────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# ── Visual Studio ─────────────────────────────────────────────
+.vs/
+*.user
+*.suo
+*.sln.docstates
+*.aps
+*.VC.db
+*.VC.opendb
+
+# ── VS Code / JetBrains ───────────────────────────────────────
+.vscode/
+.idea/
+
+# ── OS ────────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ── Claude Code (ローカル絶対パスを含む) ──────────────────────
+.claude/

@@ -91,14 +91,44 @@ CUDA_HOSTDEV inline float r_plus(float M, float a, float Q) {
     return M + sqrtf(fmaxf(M * M - a * a - Q * Q, 0.0f));
 }
 
-// Innermost stable circular orbit (ISCO) for Kerr
-CUDA_HOSTDEV inline float r_isco(float M, float a) {
-    // Bardeen et al. 1972 formula
-    float z1 = 1.0f + cbrtf(1.0f - a*a/(M*M)) *
-               (cbrtf(1.0f + a/M) + cbrtf(1.0f - a/M));
-    float z2 = sqrtf(3.0f * a*a/(M*M) + z1*z1);
-    float sign = (a >= 0) ? 1.0f : -1.0f;
-    return M * (3.0f + z2 - sign * sqrtf((3.0f - z1)*(3.0f + z1 + 2.0f*z2)));
+// Specific energy of the equatorial circular orbit rotating in +phi (prograde
+// for a>0, retrograde for a<0) in Kerr-Newman.  NaN where no timelike circular
+// orbit exists (inside the photon orbit).
+inline double circOrbitEnergy(double r, double M, double a, double Q) {
+    double w = M * r - Q * Q;
+    if (w <= 0.0) return NAN;
+    w = std::sqrt(w);
+    double Om  = w / (r * r + a * w);
+    double f   = (2.0 * M * r - Q * Q) / (r * r);
+    double gtt = -(1.0 - f), gtp = -a * f, gpp = r * r + a * a + a * a * f;
+    double u2  = -(gtt + 2.0 * gtp * Om + gpp * Om * Om);
+    if (!(u2 > 0.0)) return NAN;
+    return -(gtt + gtp * Om) / std::sqrt(u2);
+}
+
+// Innermost stable circular orbit (ISCO) for Kerr-Newman (host only).
+// The ISCO is the minimum of E(r): dE/dr < 0 inside it, > 0 outside.
+// There is no closed form once Q != 0 (Bardeen's formula is Kerr-only), so
+// scan inward from 10M (ISCO <= 9M for any |a|,|Q| <= M) and bisect.
+inline float r_isco(float M, float a, float Q) {
+    double Md = M, ad = a, Qd = Q;
+    double eps = 1e-4 * Md;
+    auto dE = [&](double r) {
+        return circOrbitEnergy(r + eps, Md, ad, Qd) - circOrbitEnergy(r - eps, Md, ad, Qd);
+    };
+    double r_in = r_plus(M, a, Q);
+    double hi = 10.0 * Md, lo = hi;
+    while (true) {
+        lo = hi - 0.01 * Md;
+        if (lo <= r_in || !(dE(lo) > 0.0)) break;   // NaN counts as "inside"
+        hi = lo;
+    }
+    for (int i = 0; i < 60; ++i) {
+        double mid = 0.5 * (lo + hi);
+        if (dE(mid) > 0.0) hi = mid;
+        else               lo = mid;
+    }
+    return (float)hi;
 }
 
 } // namespace KN

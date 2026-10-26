@@ -333,7 +333,12 @@ __device__ float4 traceOnce(float ndc_x, float ndc_y,
                               const RenderParams p,
                               int n_steps)
 {
-    float M = p.bh.M, a = p.bh.a, Qbh = p.bh.Q;
+    // Rays are traced backward from the camera, but the integrator propagates a
+    // future-directed photon.  Kerr-Newman under t -> -t is the same metric with
+    // a -> -a, so the physical (past-directed) ray's spatial path equals a
+    // future-directed ray traced with the spin reversed.  Using +a here would
+    // render the mirror-spin black hole (shadow flattened on the receding side).
+    float M = p.bh.M, a = -p.bh.a, Qbh = p.bh.Q;
     float r_h = KN::r_plus(M, a, Qbh);
     float r0  = p.cam_r;
 
@@ -427,7 +432,7 @@ __device__ float4 traceOnce(float ndc_x, float ndc_y,
                 float rc   = bs.r   + frac * (bsend.r   - bs.r);
                 float phic = bs.phi + frac * (bsend.phi - bs.phi);
 
-                float4 dc = diskColor(rc, phic, p.cam_phi, p.disk_inner, p.disk_outer, M, a);
+                float4 dc = diskColor(rc, phic, p.cam_phi, p.disk_inner, p.disk_outer, M, p.bh.a);
                 disk_col.x += dc.x * dc.w * (1.0f - disk_col.w);
                 disk_col.y += dc.y * dc.w * (1.0f - disk_col.w);
                 disk_col.z += dc.z * dc.w * (1.0f - disk_col.w);
@@ -578,7 +583,7 @@ __global__ void rayTracerKernel(float4* output,
 
     float st = sinf(p.cam_theta), ct = cosf(p.cam_theta);
     float sp = sinf(p.cam_phi),   cp = cosf(p.cam_phi);
-    float r0 = p.cam_r, a = p.bh.a, M = p.bh.M;
+    float r0 = p.cam_r, a = -p.bh.a, M = p.bh.M;  // time-reversed spin, see traceOnce
 
     float Qbh = p.bh.Q;
     float n_r  =  st*cp * wdx + st*sp * wdy + ct * wdz;

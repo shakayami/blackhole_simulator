@@ -281,7 +281,12 @@ static float4 traceOnceCPU(float ndc_x, float ndc_y,
                              const CudaTexture& disk_tex,
                              const RenderParams& p,
                              int n_steps) {
-    float M = p.bh.M, a = p.bh.a, Qbh = p.bh.Q;
+    // Rays are traced backward from the camera, but the integrator propagates a
+    // future-directed photon.  Kerr-Newman under t -> -t is the same metric with
+    // a -> -a, so the physical (past-directed) ray's spatial path equals a
+    // future-directed ray traced with the spin reversed.  Using +a here would
+    // render the mirror-spin black hole (shadow flattened on the receding side).
+    float M = p.bh.M, a = -p.bh.a, Qbh = p.bh.Q;
     float r_h = KN::r_plus(M, a, Qbh);
     float r0  = p.cam_r;
 
@@ -363,7 +368,7 @@ static float4 traceOnceCPU(float ndc_x, float ndc_y,
                 float rc   = bs.r   + frac * (bsend.r   - bs.r);
                 float phic = bs.phi + frac * (bsend.phi - bs.phi);
 
-                float4 dc = diskColor(rc, phic, p.cam_phi, p.disk_inner, p.disk_outer, M, a);
+                float4 dc = diskColor(rc, phic, p.cam_phi, p.disk_inner, p.disk_outer, M, p.bh.a);
                 disk_col.x += dc.x * dc.w * (1.0f - disk_col.w);
                 disk_col.y += dc.y * dc.w * (1.0f - disk_col.w);
                 disk_col.z += dc.z * dc.w * (1.0f - disk_col.w);
@@ -474,7 +479,7 @@ static float4 traceOnceCPU(float ndc_x, float ndc_y,
 
 static int adaptiveSteps(float ndc_x, float ndc_y, float aspect, float tan_hfov,
                           const RenderParams& p) {
-    float M = p.bh.M, a = p.bh.a;
+    float M = p.bh.M, a = -p.bh.a;  // time-reversed spin, see traceOnceCPU
     float wdx, wdy, wdz;
     buildRayDir(ndc_x, ndc_y, aspect, tan_hfov, p, wdx, wdy, wdz);
     float st = std::sin(p.cam_theta), ct = std::cos(p.cam_theta);

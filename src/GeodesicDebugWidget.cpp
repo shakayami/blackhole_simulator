@@ -66,7 +66,7 @@ static float nullResidual(float r, float theta, float b, float q2,
 
     // inverse metric KN
     float gtt   = -A  / (sig*del);
-    float gtphi =  (2.f*M*r - Q*Q)*a / (sig*del);
+    float gtphi = -(2.f*M*r - Q*Q)*a / (sig*del);
     float gphph =  (del - a*a*sin2) / (sig*del*sin2);
     float grr   =  del / sig;
     float gthth =  1.f / sig;
@@ -1337,6 +1337,9 @@ void GeodesicDebugWidget::trace() {
     if (!m_params) return;
     const RenderParams& p = *m_params;
     float M = p.bh.M, a = p.bh.a, Q = p.bh.Q;
+    // Geodesics use the time-reversed spin (same as the renderer, see
+    // traceOnce in RayTracer.cu); a itself stays physical for ISCO/photon rings.
+    float a_geo = -a;
     float aspect    = p.width > 0 ? (float)p.width / p.height : 1.f;
     float tan_hfov  = std::tan(p.fov * 0.5f);
     float st = std::sin(p.cam_theta), ct = std::cos(p.cam_theta);
@@ -1445,11 +1448,11 @@ void GeodesicDebugWidget::trace() {
 
         // ── Initial conditions ───────────────────────────────────────────────
         float b, q2, sr, sth;
-        kn_initial_conditions_cpu(n_r, n_th, n_ph, p.cam_r, st, ct, M, a, Q,
+        kn_initial_conditions_cpu(n_r, n_th, n_ph, p.cam_r, st, ct, M, a_geo, Q,
                                    b, q2, sr, sth);
 
         float R0_init, Th0_init;
-        KN::computeGeodesicRHS(p.cam_r, p.cam_theta, M, a, Q,
+        KN::computeGeodesicRHS(p.cam_r, p.cam_theta, M, a_geo, Q,
                                 b, q2, R0_init, Th0_init);
 
         // Focus rays: white-ish palette; global rays: hue sweep
@@ -1464,7 +1467,7 @@ void GeodesicDebugWidget::trace() {
 
         GeodesicRay ray = integrateCPU(b, q2, sr, sth,
                                         p.cam_r, p.cam_theta, p.cam_phi,
-                                        M, a, Q, cpu_steps, p.step_size,
+                                        M, a_geo, Q, cpu_steps, p.step_size,
                                         max_phi_wind, p.sky_lon_offset, col, ndc_x);
         ray.ndc_y = ndc_y;
 
@@ -1639,7 +1642,7 @@ void GeodesicDebugWidget::trace() {
 
     {
         float r_h    = KN::r_plus(M, a, Q);
-        float r_isco = KN::r_isco(M, a);
+        float r_isco = KN::r_isco(M, a, Q);
         m_view->setData(rays, r_h, r_ph_lo, r_ph_hi, r_isco, M,
                         p.cam_r, p.cam_theta, p.cam_phi, isVertical);
         m_view3d->setData(rays, r_h, r_ph_lo, r_ph_hi, r_isco, M,

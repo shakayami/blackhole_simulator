@@ -32,7 +32,7 @@ BlackHoleWidget::BlackHoleWidget(QWidget* parent) : QOpenGLWidget(parent) {
     m_params.bh.a       = 0.0f;
     m_params.bh.Q       = 0.0f;
     m_params.show_disk  = true;
-    m_params.disk_inner = KN::r_isco(m_params.bh.M, m_params.bh.a);
+    m_params.disk_inner = KN::r_isco(m_params.bh.M, m_params.bh.a, m_params.bh.Q);
     m_params.disk_outer = 20.0f;
     m_params.max_steps      = 600;
     m_params.step_size      = 0.05f;
@@ -305,9 +305,15 @@ double BlackHoleWidget::timeDilationFactor() const {
     double M   = m_params.bh.M;
     double a   = m_params.bh.a;
     double Q   = m_params.bh.Q;
+    // The renderer's camera is a ZAMO (see kn_initial_conditions), so its proper
+    // time runs at the ZAMO lapse alpha = sqrt(Delta*Sigma/A).  The static-observer
+    // factor sqrt(-g_tt) differs for a != 0 and vanishes inside the ergosphere.
     double ct  = std::cos(m_params.cam_theta);
+    double st2 = 1.0 - ct*ct;
     double sig = r*r + a*a*ct*ct;
-    double val = 1.0 - (2.0*M*r - Q*Q) / sig;
+    double del = r*r - 2.0*M*r + a*a + Q*Q;
+    double A   = (r*r + a*a)*(r*r + a*a) - del*a*a*st2;
+    double val = del * sig / A;
     if (val <= 0.0) return 0.0;
     return std::sqrt(val);
 }
@@ -347,17 +353,27 @@ void BlackHoleWidget::saveFrameToFile(const QString& path) {
 
 // ── Slots ─────────────────────────────────────────────────────────────────────
 
-void BlackHoleWidget::setMass(double v)     { m_params.bh.M = (float)v; }
+void BlackHoleWidget::setMass(double v) {
+    // a and Q are stored in absolute units but the UI sets a/M and Q/M, so keep
+    // those ratios fixed; otherwise lowering M can produce a^2+Q^2 > M^2.
+    float M_old = m_params.bh.M;
+    float scale = (M_old > 0.0f) ? (float)v / M_old : 1.0f;
+    m_params.bh.M  = (float)v;
+    m_params.bh.a *= scale;
+    m_params.bh.Q *= scale;
+    m_params.disk_inner = KN::r_isco(m_params.bh.M, m_params.bh.a, m_params.bh.Q);
+}
 void BlackHoleWidget::setSpin(double v) {
     double q_norm = (m_params.bh.M > 0.0f) ? (m_params.bh.Q / m_params.bh.M) : 0.0;
     double max_a  = std::sqrt(std::max(0.0, 1.0 - q_norm * q_norm)) * (1.0 - 1e-5);
     m_params.bh.a = (float)(std::max(-max_a, std::min(max_a, v)) * m_params.bh.M);
-    m_params.disk_inner = KN::r_isco(m_params.bh.M, m_params.bh.a);
+    m_params.disk_inner = KN::r_isco(m_params.bh.M, m_params.bh.a, m_params.bh.Q);
 }
 void BlackHoleWidget::setCharge(double v) {
     double a_norm = (m_params.bh.M > 0.0f) ? (m_params.bh.a / m_params.bh.M) : 0.0;
     double max_q  = std::sqrt(std::max(0.0, 1.0 - a_norm * a_norm)) * (1.0 - 1e-5);
     m_params.bh.Q = (float)(std::max(-max_q, std::min(max_q, v)) * m_params.bh.M);
+    m_params.disk_inner = KN::r_isco(m_params.bh.M, m_params.bh.a, m_params.bh.Q);
 }
 void BlackHoleWidget::setShowDisk(bool v)   { m_params.show_disk = v; }
 void BlackHoleWidget::setMaxSteps(int v)    { m_params.max_steps = v; }

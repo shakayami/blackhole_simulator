@@ -1,0 +1,15 @@
+# 依存関係の自動更新。
+# cooldown: 公開から 7 日未満の版は取り込まない (乗っ取られた版を掴まないための
+# サプライチェーン攻撃対策)。エコシステムごとに 1 本の PR にまとめる。
+version: 2
+updates:
+  # vcpkg.json の builtin-baseline (glm / stb)
+  - package-ecosystem: "vcpkg"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      vcpkg:
+        patterns: ["*"]
